@@ -105,14 +105,6 @@ def read_har_dataset(path_to_dir):
     validationepoch = testepochs[int(test_no/2):]
     testepoch = testepochs[:int(test_no/2)]
     
-    print("Training files: {} - {}".format(len(trainfilenames), trainfilenames))
-    print("Train epochs: {} - {}".format(len(trainepochnames), trainepochnames))
-    print("Testing files: {} - {}".format(len(testfile), testfile))
-    print("Testing epochs: {} - {}".format(len(testepoch), testepoch))
-    print("Validation files: {} - {}".format(len(validationfile), validationfile))
-    print("Validation epochs: {} - {}".format(len(validationepoch), validationepoch))
-    
-    
 
     X_train , X_test, X_validation, y_train, y_test, y_val = None, None, None, None, None, None
     I_train, I_test, I_val = None, None, None
@@ -319,8 +311,8 @@ def read_har_dataset(path_to_dir):
     y_train = y_train[:,0].reshape(-1, 1)   # extract class labels
     
     kcal_MET = kcal_MET.astype(np.float32)
-    test_kcal_MET = kcal_MET.astype(np.float32)
-    val_kcal_MET = kcal_MET.astype(np.float32)
+    test_kcal_MET = test_kcal_MET.astype(np.float32)
+    val_kcal_MET = validation_kcal_MET.astype(np.float32)
     
     X_train = X_train.astype(np.float32)
     X_test = X_test.astype(np.float32)

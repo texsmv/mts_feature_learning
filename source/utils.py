@@ -1,10 +1,55 @@
-from cProfile import label
+import torch
+import random
 import os
 import csv
 import numpy as np
 from math import *
+import source.augmentation as aug
 
 from sklearn import metrics
+
+import numpy as np
+np.set_printoptions(precision=3)
+
+class ValueLogger(object):
+    """Computes and stores the average and current value"""
+    def __init__(self, name, epoch_freq = 5):
+        self.name = name
+        self.epoch_freq = epoch_freq
+        self.reset()
+    
+    def reset(self):
+        self.avgs = []
+        self.val = 0
+        self.avg = 0
+        self.sum = 0
+        self.count = 0.0
+        self.bestAvg = np.inf
+        
+        
+    def end_epoch(self):
+        
+        self.avgs = self.avgs + [self.avg]
+        self.val = 0
+        self.sum = 0
+        self.count = 0.0
+        if len(self.avgs) == 1 or len(self.avgs) % self.epoch_freq == 0:
+            print("Epoch[{}] {} {}: {}".format(len(self.avgs), self.name, "avg", self.avg))
+    
+        if self.bestAvg > self.avg:
+            self.bestAvg = self.avg
+            return True
+        else:
+            return False
+
+    # Updates de value history
+    def update(self, val, n=1):
+        self.val = val
+        self.sum += val * n
+        self.count += n
+        self.avg = self.sum / self.count
+
+
 
 
 def regression_results(y_true, y_pred):
@@ -170,3 +215,50 @@ def save_metrics2(labels_map, path):
             # f1_val = metrics.f1_score(y_validation, validation_pred, average='weighted')
             
             spamwriter.writerow([key, accuracy_tr, bal_accuracy_tr, f1_tr, accuracy_te, bal_accuracy_te, f1_te])
+
+def create_dir(path):
+    # Check whether the specified path exist or not
+    isExist = os.path.exists(path)
+    if not isExist:
+      # Create a new directory because it does not exist 
+      os.makedirs(path)
+      print("The new directory is created!")
+
+
+def getRandomSlides(batch, size, isNumpy = False):
+    if not isNumpy:
+        batch = batch.numpy()
+    B, D, T = batch.shape
+    b = np.array([random.randint(0, T - size) for i in range(B)])
+    slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
+    return slides
+
+
+def getViews(batch, size, isNumpy = False):
+    originalSlides = getRandomSlides(batch, size, isNumpy)
+    
+    fslides = originalSlides.transpose((0, 2, 1))
+    # scaled = aug.scaling(fslides, sigma=0.1).transpose((0, 2, 1))
+    scaled = fslides.transpose((0, 2, 1))
+    
+    originalSlides = getRandomSlides(batch, size, isNumpy)
+    fslides = originalSlides.transpose((0, 2, 1))
+    # flipped = aug.rotation(fslides).transpose((0, 2, 1))
+    flipped = fslides.transpose((0, 2, 1))
+    
+    originalSlides = getRandomSlides(batch, size, isNumpy)
+    fslides = originalSlides.transpose((0, 2, 1))
+    # magWarped =  aug.magnitude_warp(fslides, sigma=0.2, knot=4).transpose((0, 2, 1))
+    magWarped =  fslides.transpose((0, 2, 1))
+    
+    originalSlides = getRandomSlides(batch, size, isNumpy)
+    # fslides = originalSlides.transpose((0, 2, 1))
+    
+    # return torch.from_numpy(originalSlides.astype(np.float32))
+    return [
+        torch.from_numpy(originalSlides.astype(np.float32)),
+        torch.from_numpy(scaled.astype(np.float32)),
+        torch.from_numpy(flipped.astype(np.float32)),
+        torch.from_numpy(magWarped.astype(np.float32)),
+    ]
+    # return torch.from_numpy(np.stack([originalSlides, scaled, flipped, magWarped], axis=1).astype(np.float32))

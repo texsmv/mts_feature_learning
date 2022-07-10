@@ -161,10 +161,12 @@ cython_debug/
 
 datasets/
 
-experiments/
+experiments/*
 
 *.npy
 
 *.png
 
 *.h5
+
+#experiments/*
