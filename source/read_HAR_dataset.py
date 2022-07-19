@@ -1,5 +1,4 @@
 # This code was modified from the original repository: HAR-UML20
-
 import csv
 import os
 import numpy as np

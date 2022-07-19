@@ -95,7 +95,7 @@ class SiameseNetwork(nn.Module):
         x = self.linear(x)
         return x
 
-    def encode(self, x, device, batch_size = 64):
+    def getFeatures(self, x, device, batch_size = 64):
         
         self.features.eval()
         self.linear.eval()
@@ -117,10 +117,28 @@ class SiameseNetwork(nn.Module):
             output = torch.cat(output, dim=0)
         return output.cpu().numpy()
 
+    def encode(self, x, device, batch_size = 64):
+        
+        self.features.eval()
+        self.linear.eval()
+        
+        dataset = TensorDataset(torch.from_numpy(x).to(torch.float))
+        loader = DataLoader(dataset, batch_size=batch_size)
+        
+        with torch.no_grad():
+            output = []
+            for batch in loader:
+                x = batch[0]
+                x = getRandomSlides(x, self.length)
+                x = torch.from_numpy(x)
+                x = x.to(device)
+                x = self.features(x)
+                x = self.linear(x)
 
-
-
-
+                output.append(x)
+                
+            output = torch.cat(output, dim=0)
+        return output.cpu().numpy()
 
 def train_batch(model, data, optimizer, criterion, device, win_len, supervised= True):
     model.features.train()

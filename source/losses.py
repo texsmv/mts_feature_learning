@@ -21,8 +21,7 @@ class TripletLoss(torch.nn.Module):
         d2 = torch.squeeze(d2)
         
         tl = torch.clamp( torch.pow(d1, 2) - torch.pow(d2, 2) + self.m, min=0)
-        return torch.mean(tl)
-    
+        return torch.mean(tl)    
 class ContrastiveLoss(torch.nn.Module):
     """
     Contrastive loss function.
@@ -38,12 +37,7 @@ class ContrastiveLoss(torch.nn.Module):
         loss_contrastive = torch.mean((1-label) * torch.pow(euclidean_distance, 2)/2 +
             (label) * torch.pow(torch.clamp(self.margin - euclidean_distance, min=0.0), 2))/2
         acc = ((euclidean_distance > contrastive_thres) == label).float().mean()
-        # return loss_contrastive, acc
         return loss_contrastive
-
-
-    
-
 
 
 """

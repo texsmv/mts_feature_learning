@@ -129,7 +129,6 @@ def create_dir(path):
 
 # Assuming X has the shape N, T, D
 def filter_dimensions(X, all_dimensions, dimensions):
-    
     idx = [np.where(all_dimensions == dim)[0][0] for dim in dimensions]
     return X[:, :, idx]
 
@@ -224,14 +223,24 @@ def create_dir(path):
       os.makedirs(path)
       print("The new directory is created!")
 
-
+# Batch of shape BxDxT
 def getRandomSlides(batch, size, isNumpy = False):
     if not isNumpy:
         batch = batch.numpy()
     B, D, T = batch.shape
     b = np.array([random.randint(0, T - size) for i in range(B)])
-    slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
-    return slides
+
+    # slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
+
+    slides = []
+    for i in range(B):
+        slide = batch[i,:, b[i]: b[i] + size]
+        for j in range(D):
+            slide[j] = slide[j] + random.uniform(-0.1, 0.1)
+        slides.append(slide)
+    return np.array(slides).astype(np.float32)
+
+    # return slides
 
 
 def getViews(batch, size, isNumpy = False):
