@@ -230,17 +230,17 @@ def getRandomSlides(batch, size, isNumpy = False):
     B, D, T = batch.shape
     b = np.array([random.randint(0, T - size) for i in range(B)])
 
-    # slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
+    slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
 
-    slides = []
-    for i in range(B):
-        slide = batch[i,:, b[i]: b[i] + size]
-        for j in range(D):
-            slide[j] = slide[j] + random.uniform(-0.1, 0.1)
-        slides.append(slide)
-    return np.array(slides).astype(np.float32)
+    # slides = []
+    # for i in range(B):
+    #     slide = batch[i,:, b[i]: b[i] + size]
+    #     for j in range(D):
+    #         slide[j] = slide[j] + random.uniform(-0.1, 0.1)
+    #     slides.append(slide)
+    # return np.array(slides).astype(np.float32)
 
-    # return slides
+    return slides
 
 
 def getViews(batch, size, isNumpy = False):
