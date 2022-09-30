@@ -3,7 +3,6 @@ import csv
 import os
 import numpy as np
 from sklearn.utils import shuffle
-from .utils import divide_train_test, splitOverlapWindows
 
 
 har_dimensions = np.array([
@@ -16,6 +15,26 @@ har_dimensions = np.array([
     'Magnetometer-X',
     'Magnetometer-Y',
     'Magnetometer-Z'
+])
+
+har_activities_map = {
+    0: "Sitting",
+    1: "Lying",
+    2: "Standing",
+    3: "Walking",
+    4: "Running",
+    5: "Downstairs",
+    6: "Upstairs"
+}
+
+har_activities = np.array([
+    "Sitting",
+    "Lying",
+    "Standing",
+    "Walking",
+    "Running",
+    "Downstairs",
+    "Upstairs"
 ])
 
 def csv_parse(filename, path_to_dir):
@@ -44,7 +63,7 @@ def find_csv_filenames( path_to_dir, suffix=".csv" ):
     return [ filename for filename in filenames if filename.endswith( suffix ) ]
 
 
-def  get_dataset(path_to_dir):
+def get_dataset(path_to_dir):
 	data = find_csv_filenames(path_to_dir)
 	data = [ file for file in data if 'dataset' in file]
 	epochslist = find_csv_filenames(path_to_dir, 'epochs.csv')
@@ -60,17 +79,40 @@ def  get_dataset(path_to_dir):
 	return (d_list, e_list)
 
 
+har_ind_IDS = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-
-def read_har_dataset(path_to_dir):
+def read_har_dataset(path_to_dir, train_ids = None, test_ids = None, val_ids = None, cache=True):
     
-
     allfilenames, epochnames = get_dataset(path_to_dir)
     ids = list(range(len(allfilenames)))
+    if train_ids is None:
+        shuffled_indices = np.random.permutation(len(ids))
+        ids = [ids[i] for i in shuffled_indices]
+        
+        test_no = int(0.4 * len(allfilenames))
+        n = len(allfilenames)
+        
+        train_ids = ids[:n - test_no]
+        testing_ids = ids[n - test_no:] # both test and validation ids
+        
+        val_ids = testing_ids[int(test_no/2):]
+        test_ids = testing_ids[:int(test_no/2)]
+        
+    print('Train IDS: {}'.format(train_ids))
+    print('Test IDS: {}'.format(test_ids))
+    print('Val IDS: {}'.format(val_ids))
+    
+    dataset_name = 'HAR_UML20_test_{}_val_{}.npy'.format('_'.join([str(i) for i in test_ids]), '_'.join([str(i) for i in val_ids]))
+    
+    DB_CACHE_PATH = os.path.join('outputs/cache_datasets/', dataset_name)
+    
+    if cache and os.path.exists(DB_CACHE_PATH):
+        print('Loading dataset from cache...')
+        return np.load(DB_CACHE_PATH, allow_pickle=True)[()]
+    
+
     
     # ------------- Apply random permutation---------------
-    shuffled_indices = np.random.permutation(len(ids))
-    ids = [ids[i] for i in shuffled_indices]
     # allfilenames = [allfilenames[i] for i in shuffled_indices]
     # epochnames = [epochnames[i] for i in shuffled_indices]
     # -----------------------------------------------------
@@ -78,33 +120,8 @@ def read_har_dataset(path_to_dir):
     
     print('IDS: {}'.format(ids))
     
-    test_no = int(0.4 * len(allfilenames))
-    n = len(allfilenames)
-    
-    trainfilenames = allfilenames[: n - test_no]
-    testfile = allfilenames[n - test_no: ]
-    
-    trainepochnames = epochnames[: n - test_no]
-    testepochs = epochnames[n - test_no: ]
-    
-    train_ids = ids[:n - test_no]
-    testing_ids = ids[n - test_no:] # both test and validation ids
-    
-    val_ids = testing_ids[int(test_no/2):]
-    test_ids = testing_ids[:int(test_no/2)]
-    
-    print('Train IDS: {}'.format(train_ids))
-    print('Test IDS: {}'.format(test_ids))
-    print('Val IDS: {}'.format(val_ids))
     
     
-    validationfile = testfile[int(test_no/2):]
-    testfile = testfile[:int(test_no/2)]
-    
-    validationepoch = testepochs[int(test_no/2):]
-    testepoch = testepochs[:int(test_no/2)]
-    
-
     X_train , X_test, X_validation, y_train, y_test, y_val = None, None, None, None, None, None
     I_train, I_test, I_val = None, None, None
     
@@ -309,24 +326,33 @@ def read_har_dataset(path_to_dir):
     kcal_MET = y_train[:, 4:] # extract kcal & MET values
     y_train = y_train[:,0].reshape(-1, 1)   # extract class labels
     
+    
+    
+    
+    
     kcal_MET = kcal_MET.astype(np.float32)
-    test_kcal_MET = test_kcal_MET.astype(np.float32)
-    val_kcal_MET = validation_kcal_MET.astype(np.float32)
-    
     X_train = X_train.astype(np.float32)
-    X_test = X_test.astype(np.float32)
-    X_val = X_validation.astype(np.float32)
-    
     y_train = y_train.astype(np.int32)
-    y_test = y_test.astype(np.int32)
-    y_val = y_val.astype(np.int32)
-    
     I_train = I_train.astype(np.int32)
+    
+    test_kcal_MET = test_kcal_MET.astype(np.float32)
+    X_test = X_test.astype(np.float32)
+    y_test = y_test.astype(np.int32)
     I_test = I_test.astype(np.int32)
-    I_val = I_val.astype(np.int32)
 
-    return {
+    if len(val_ids) != 0:
+        val_kcal_MET = validation_kcal_MET.astype(np.float32)
+        X_val = X_validation.astype(np.float32)
+        y_val = y_val.astype(np.int32)
+        I_val = I_val.astype(np.int32)
+    else:
+        val_kcal_MET = X_val = y_val = I_val = np.array([])
+    
+    data_map = {
         'train': [train_ids, X_train, y_train, I_train, kcal_MET],
         'test': [test_ids, X_test, y_test, I_test, test_kcal_MET],
         'val':[val_ids, X_val, y_val, I_val, val_kcal_MET]
     }
+    
+    np.save(DB_CACHE_PATH, data_map)
+    return data_map

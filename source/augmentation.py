@@ -1,5 +1,6 @@
 import numpy as np
 from tqdm import tqdm
+from transforms3d.axangles import axangle2mat
 
 def jitter(x, sigma=0.03):
     # https://arxiv.org/pdf/1706.00527.pdf
@@ -10,7 +11,7 @@ def scaling(x, sigma=0.1):
     factor = np.random.normal(loc=1., scale=sigma, size=(x.shape[0],x.shape[2]))
     return np.multiply(x, factor[:,np.newaxis,:])
 
-def rotation(x):
+def flipping(x):
     flip = np.random.choice([-1, 1], size=(x.shape[0],x.shape[2]))
     rotate_axis = np.arange(x.shape[2])
     np.random.shuffle(rotate_axis)    
@@ -316,3 +317,31 @@ def discriminative_guided_warp(x, labels, batch_size=6, slope_constraint="symmet
 
 def discriminative_guided_warp_shape(x, labels, batch_size=6, slope_constraint="symmetric", use_window=True):
     return discriminative_guided_warp(x, labels, batch_size, slope_constraint, use_window, dtw_type="shape")
+
+def magnitude_pert(X_in, prange = (0, 1)):
+    X = X_in.transpose([0, 2, 1])
+    N, D, T = X.shape
+    rand_mag = np.random.random([N, D]) * (prange[1] - prange[0]) + prange[0]
+    rand_mag = np.repeat(rand_mag, T)
+    rand_mag = rand_mag.reshape(N, D, T)
+    return (X + rand_mag).transpose([0, 2, 1])
+
+def rotation_u(X, angle_range = (-np.pi, np.pi)):       
+    angle = np.random.uniform(low=angle_range[0], high=angle_range[1])
+    axis = np.random.uniform(low=-1, high=1, size=3)
+    n_axis = X.shape[1]
+    assert (n_axis % 3 == 0)
+    n = n_axis // 3
+    X_out = []
+    for i in range(n):
+        X_s = X[:, i * 3: (i + 1) * 3]
+        X_s = np.matmul(X_s, axangle2mat(axis,angle))
+        if len(X_out) == 0:
+            X_out = X_s
+        else:
+            X_out = np.concatenate([X_out, X_s], axis=1)
+    return X_out
+
+def rotation(X, angle_range = (-np.pi, np.pi)):
+    return np.array([rotation_u(x, angle_range=angle_range) for x in X])
+

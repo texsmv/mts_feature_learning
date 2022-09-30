@@ -1,11 +1,14 @@
-import torch
+# import torch
 import random
 import os
 import csv
 import numpy as np
 from math import *
 import source.augmentation as aug
-
+from sklearn import svm
+from sklearn.ensemble import AdaBoostClassifier
+from xgboost import XGBClassifier
+import matplotlib.pyplot as plt
 from sklearn import metrics
 
 import numpy as np
@@ -92,6 +95,15 @@ def splitOverlapWindows(vector, wsize, overlap = 0.5):
     # print(wadv)
         
     return np.array([vector[i * wadv: i * wadv + wsize] for i in range(n)])
+
+def removeNanWindows(windows):
+    new_windows = []
+    for window in windows:
+        if np.isnan(window).any():
+            continue
+        else:
+            new_windows.append(window)
+    return np.array(new_windows)
 
 def divide_train_test(X, n_test, Z = None):
     """
@@ -223,24 +235,25 @@ def create_dir(path):
       os.makedirs(path)
       print("The new directory is created!")
 
-# Batch of shape BxDxT
-def getRandomSlides(batch, size, isNumpy = False):
-    if not isNumpy:
-        batch = batch.numpy()
-    B, D, T = batch.shape
-    b = np.array([random.randint(0, T - size) for i in range(B)])
+# # Batch of shape BxDxT
+# def getRandomSlides(batch, size, isNumpy = False):
+#     if not isNumpy:
+#         batch = batch.numpy()
+#     B, D, T = batch.shape
+#     b = np.array([random.randint(0, T - size) for i in range(B)])
 
-    slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
+#     # slides = np.array([ batch[i,:, b[i]: b[i] + size] for i in range(B)]).astype(np.float32)
 
-    # slides = []
-    # for i in range(B):
-    #     slide = batch[i,:, b[i]: b[i] + size]
-    #     for j in range(D):
-    #         slide[j] = slide[j] + random.uniform(-0.1, 0.1)
-    #     slides.append(slide)
-    # return np.array(slides).astype(np.float32)
+#     print("WROHN!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+#     slides = []
+#     for i in range(B):
+#         slide = batch[i,:, b[i]: b[i] + size]
+#         for j in range(D):
+#             slide[j] = slide[j] + random.uniform(-0.1, 0.1)
+#         slides.append(slide)
+#     return np.array(slides).astype(np.float32)
 
-    return slides
+#     return slides
 
 
 def getViews(batch, size, isNumpy = False):
@@ -271,3 +284,171 @@ def getViews(batch, size, isNumpy = False):
         torch.from_numpy(magWarped.astype(np.float32)),
     ]
     # return torch.from_numpy(np.stack([originalSlides, scaled, flipped, magWarped], axis=1).astype(np.float32))
+    
+
+
+def getColor(pos, unit_range = False):
+    colors = [[249, 23, 29], [2, 111, 203], [244, 207, 59], [34, 191, 48], [45, 190, 241], [254, 128, 42], [250, 70, 135]]
+    if unit_range:
+        colors = [[i / 255.0 for i in c] for c in colors]
+    if pos < len(colors):
+        return colors[pos]    
+    else:
+        return list(np.random.choice(range(256), size=3) / (255.0 if unit_range else 1) ) 
+    
+
+def classify_dataset(X_train, y_train, X_test, y_test):
+    # clf = RandomForestClassifier(random_state=0)
+    # clf = LinearSVC(dual=False, random_state=123)
+    # clf = svm.SVC()
+    clf = XGBClassifier()
+
+    # clf = AdaBoostClassifier()
+    
+    # clf = KNeighborsClassifier()
+    clf.fit(X_train, y_train)
+    
+    
+    return clf.predict(X_train), clf.predict(X_test)
+    
+# X -> (N, T, D)
+def idsMean(ids, X, I):
+    D = X.shape[2]
+    ind_mean = []
+    for ind in ids:
+        X_indices = np.where(I==ind)
+        means = []
+        for k in range(D):
+            dmean = np.mean( X[X_indices][:, :, k])
+            means.append(dmean)
+        ind_mean.append(means)
+    ind_mean = np.array(ind_mean)
+    return ind_mean
+
+# X -> (N, T, D)
+def idsStd(ids, X, I):
+    D = X.shape[2]
+    ind_std = []
+    for ind in ids:
+        X_indices = np.where(I==ind)[0]
+        stdss = []
+        for k in range(D):
+            dstd = np.std( X[X_indices][:, :, k])
+            stdss.append(dstd)
+        ind_std.append(stdss)
+    ind_std = np.array(ind_std)
+    return ind_std
+
+
+def plot1d(x, x2=None, x3=None, ylim=(-1, 1), save_file=""):
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(6, 3))
+    steps = np.arange(x.shape[0])
+    plt.plot(steps, x)
+    if x2 is not None:
+        plt.plot(steps, x2)
+    if x3 is not None:
+        plt.plot(steps, x3)
+    plt.xlim(0, x.shape[0])
+    # plt.ylim(ylim)
+    plt.tight_layout()
+    if save_file:
+        plt.savefig(save_file, "")
+    else:
+        plt.show()
+    return
+
+def rescale(val, in_min, in_max, out_min, out_max):
+    return out_min + (val - in_min) * ((out_max - out_min) / (in_max - in_min))
+
+# MinMax normalization for univariate time series
+def normal_normalization(windows, minv=None, maxv=None):
+    norm_windows = np.copy(windows)
+
+    if minv is None:
+        min_val = np.min(norm_windows)
+        max_val = np.max(norm_windows)
+    else:
+        min_val = minv
+        max_val = maxv
+
+    norm_windows = (norm_windows - min_val) / (max_val - min_val) 
+    # norm_windows = np.array([ [rescale(i, min_val, max_val, 0, 1) for i in e]  for e in norm_windows]) 
+
+    return norm_windows, min_val, max_val
+
+
+# MinMax normalization for multivariate time series
+def mts_norm(X, minl = [], maxl= []):
+    norm_X = X.transpose([0, 2, 1])
+    N, D, T = norm_X.shape
+    min_l = []
+    max_l = []
+    for d in range(D):
+        if len(minl) == 0:
+            norm_windows, minv, maxv = normal_normalization(norm_X[:,d,:])
+        else:
+            norm_windows, minv, maxv = normal_normalization(norm_X[:,d,:], minv=minl[d], maxv=maxl[d])
+        min_l.append(minv)
+        max_l.append(maxv)
+        norm_X[:,d, :] = norm_windows
+    return norm_X.transpose([0, 2, 1]), min_l, max_l
+
+
+def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_name = 'temp.png', save_fig = False, plot_fig=True):
+    fig_background_color = 'white'
+    fig_border = 'steelblue'
+    
+    data = []
+    for r in range(len(mat_data)):
+        data.append([row_names[r]] + list(mat_data[r]))
+    data.insert(0, col_names)
+    
+    # Pop the headers from the data array
+    column_headers = data.pop(0)
+    row_headers = [x.pop(0) for x in data]# Table data needs to be non-numeric text. Format the data
+    # while I'm at it.
+    cell_text = []
+    for row in data:
+        # cell_text.append([f'{x/1000:1.1f}' for x in row])# Get some lists of color specs for row and column headers
+        cell_text.append([str(x) for x in row])# Get some lists of color specs for row and column headers
+    rcolors = plt.cm.BuPu(np.full(len(row_headers), 0.1))
+    ccolors = plt.cm.BuPu(np.full(len(column_headers), 0.1))# Create the figure. Setting a small pad on tight_layout
+    # seems to better regulate white space. Sometimes experimenting
+    # with an explicit figsize here can produce better outcome.
+    plt.figure(linewidth=2,
+            edgecolor=fig_border,
+            facecolor=fig_background_color,
+            tight_layout={'pad':1},
+            #figsize=(5,3)
+            )# Add a table at the bottom of the axes
+    the_table = plt.table(cellText=cell_text,
+                        rowLabels=row_headers,
+                        rowColours=rcolors,
+                        rowLoc='right',
+                        colColours=ccolors,
+                        colLabels=column_headers,
+                        loc='center')# Scaling is the only influence we have over top and bottom cell padding.
+    # Make the rows taller (i.e., make cell y scale larger).
+    the_table.scale(1, 1.5)# Hide axes
+    ax = plt.gca()
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)# Hide axes border
+    plt.box(on=None)# Add title
+    plt.suptitle(title_text)# Add footer
+    plt.figtext(0.95, 0.05, footer_text, horizontalalignment='right', size=8, weight='light')# Force the figure to update, so backends center objects correctly within the figure.
+    # Without plt.draw() here, the title will center on the axes and not the figure.
+    plt.draw()# Create image. plt.savefig ignores figure edge and face colors, so map them.
+    fig = plt.gcf()
+    
+    if save_fig:
+        plt.savefig(file_name,
+            #bbox='tight',
+            edgecolor=fig.get_edgecolor(),
+            facecolor=fig.get_facecolor(),
+            dpi=300
+        )
+    if plot_fig:
+        plt.show()
+    

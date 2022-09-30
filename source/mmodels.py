@@ -133,7 +133,7 @@ class SiameseNetwork(nn.Module):
                 x = torch.from_numpy(x)
                 x = x.to(device)
                 x = self.features(x)
-                x = self.linear(x)
+                # x = self.linear(x)
 
                 output.append(x)
                 
@@ -312,3 +312,177 @@ def eval_batch_triplet(model, data, criterion, device, win_len):
 
     return loss.item()
 
+
+
+
+
+
+
+
+
+
+
+class CNNVAEFeatures(nn.Module):
+    def __init__(self, in_features, out_features, length, device, use_batch_norm = True):
+        super().__init__()
+        k = 5
+        p = k // 2
+        self.c1 = nn.Conv1d(in_features, 16, k, stride = 1, padding_mode='replicate', padding = p)
+        self.c2 = nn.Conv1d(16, 16, k, stride = 1, padding_mode='replicate', padding = p)
+        self.c3 = nn.Conv1d(16, 16, k, stride = 1, padding_mode='replicate', padding = p)
+        
+        self.cnnFeatures = (length//4) * 16
+        
+        self.use_batch_norm = use_batch_norm
+        
+        if self.use_batch_norm:
+            self.bn1 = nn.BatchNorm1d(16)
+            self.bn2 = nn.BatchNorm1d(16)
+            self.bn3 = nn.BatchNorm1d(16)
+        else:
+            self.dropout = nn.Dropout(p=0.2)
+        
+        self.m = nn.MaxPool1d(2)
+        self.device = device
+        
+        # * VAE stuff
+        self.z_dim = out_features 
+        self.linear_mu = nn.Linear(self.cnnFeatures, self.z_dim)
+        self.linear_var = nn.Linear(self.cnnFeatures, self.z_dim)
+        self.N = torch.distributions.Normal(0, 1)
+        # self.N.loc = self.N.loc.cuda() # hack to get sampling on the GPU
+        # self.N.scale = self.N.scale.cuda()
+        
+        self.outLinear = nn.Linear(self.z_dim, out_features)
+        
+    def forward(self,x):
+        B = x.shape[0]
+        
+        x = self.c1(x)
+        x = F.relu(x)
+        if self.use_batch_norm:
+            x = self.bn1(x)
+        else:
+            x = self.dropout(x)
+        x = self.m(x)
+        
+        
+        x = self.c2(x)
+        x = F.relu(x)
+        if self.use_batch_norm:
+            x = self.bn2(x)
+        else:
+            x = self.dropout(x)
+        x = self.m(x)
+        
+        x = self.c3(x)
+        x = F.relu(x)
+        if self.use_batch_norm:
+            x = self.bn3(x)
+        else:
+            x = self.dropout(x)
+        
+        h = torch.flatten(x, start_dim=1)
+        
+        h = F.relu(h)
+        
+        z_mu = self.linear_mu(h)
+        
+        z_var = self.linear_var(h)
+        
+        eps = torch.randn(B, self.z_dim).to(self.device)
+        
+        z_sample = z_mu + torch.exp(z_var / 2) * eps
+        # z_sample = z_mu + z_var * self.N.sample(z_mu.shape)
+        
+        
+        
+        # x = self.outLinear(z_sample)
+        # x = F.normalize(x, dim=1)
+        return z_sample, z_mu, z_var
+
+class HeadModelVAE(nn.Module):
+    # head either mlp or linear
+    def __init__(self, dim_in, head='mlp',  feat_dim=128):
+        super(HeadModelVAE, self).__init__()
+        if head == 'linear':
+            self.head = nn.Linear(dim_in, feat_dim)
+        elif head == 'mlp':
+            self.head = nn.Sequential(
+                nn.Linear(dim_in, dim_in),
+                nn.ReLU(inplace=True),
+                nn.BatchNorm1d(dim_in),
+                nn.Linear(dim_in, feat_dim)
+            )
+        else:
+            raise NotImplementedError(
+                'head not supported: {}'.format(head))
+
+    def forward(self, x):
+        x = self.head(x)
+        x = F.normalize(x, dim=1)
+        return x
+
+
+class VAESiameseNetwork(nn.Module):
+    def __init__(self, in_features, length, device, feat_dim=128, head='linear'): # mlp
+        super().__init__()
+        self.cnn_feat = (length//4) * 16
+        
+        self.features = CNNVAEFeatures(in_features, feat_dim, length, device)
+        
+        self.linear = HeadModelVAE(feat_dim, head = head, feat_dim=feat_dim)
+        
+        self.length = length
+        self.in_features = in_features
+        
+    def forward(self,x):
+        
+        x, z_mu, z_var = self.features(x)
+        c = self.linear(x)
+        return c, z_mu, z_var
+
+    def getFeatures(self, x, device, batch_size = 64):
+        
+        self.features.eval()
+        self.linear.eval()
+        
+        dataset = TensorDataset(torch.from_numpy(x).to(torch.float))
+        loader = DataLoader(dataset, batch_size=batch_size)
+        
+        with torch.no_grad():
+            output = []
+            for batch in loader:
+                x = batch[0]
+                x = getRandomSlides(x, self.length)
+                x = torch.from_numpy(x)
+                x = x.to(device)
+                x = self.features(x)
+
+                output.append(x)
+                
+            output = torch.cat(output, dim=0)
+        return output.cpu().numpy()
+
+    def encode(self, x, device, batch_size = 64):
+        
+        self.features.eval()
+        self.linear.eval()
+        
+        dataset = TensorDataset(torch.from_numpy(x).to(torch.float))
+        loader = DataLoader(dataset, batch_size=batch_size)
+        
+        with torch.no_grad():
+            output = []
+            for batch in loader:
+                x = batch[0]
+                x = getRandomSlides(x, self.length)
+                x = torch.from_numpy(x)
+                x = x.to(device)
+                x, _, _ = self.features(x)
+                x = self.linear(x)
+
+                output.append(x)
+                
+            output = torch.cat(output, dim=0)
+        return output.cpu().numpy()
