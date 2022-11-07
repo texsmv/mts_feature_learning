@@ -3,7 +3,7 @@ import csv
 import os
 import numpy as np
 from sklearn.utils import shuffle
-
+from .utils import create_dir
 
 har_dimensions = np.array([
     'Accelerometer-X',	
@@ -25,6 +25,13 @@ har_activities_map = {
     4: "Running",
     5: "Downstairs",
     6: "Upstairs"
+}
+
+activity_intensity_map = {
+    0: "Sedentary",
+    1: "Light",
+    2: "Moderate",
+    3: "Vigorous"
 }
 
 har_activities = np.array([
@@ -98,16 +105,15 @@ def read_har_dataset(path_to_dir, train_ids = None, test_ids = None, val_ids = N
         val_ids = testing_ids[int(test_no/2):]
         test_ids = testing_ids[:int(test_no/2)]
         
-    print('Train IDS: {}'.format(train_ids))
-    print('Test IDS: {}'.format(test_ids))
-    print('Val IDS: {}'.format(val_ids))
     
     dataset_name = 'HAR_UML20_test_{}_val_{}.npy'.format('_'.join([str(i) for i in test_ids]), '_'.join([str(i) for i in val_ids]))
     
-    DB_CACHE_PATH = os.path.join('outputs/cache_datasets/', dataset_name)
+    DB_CACHE_PATH = os.path.join('cache/', dataset_name)
+    create_dir('cache')
+    
     
     if cache and os.path.exists(DB_CACHE_PATH):
-        print('Loading dataset from cache...')
+        # print('Loading dataset from cache...')
         return np.load(DB_CACHE_PATH, allow_pickle=True)[()]
     
 
@@ -118,7 +124,7 @@ def read_har_dataset(path_to_dir, train_ids = None, test_ids = None, val_ids = N
     # -----------------------------------------------------
     
     
-    print('IDS: {}'.format(ids))
+    # print('IDS: {}'.format(ids))
     
     
     
@@ -356,3 +362,54 @@ def read_har_dataset(path_to_dir, train_ids = None, test_ids = None, val_ids = N
     
     np.save(DB_CACHE_PATH, data_map)
     return data_map
+
+# Modes: leave-one-subject, shuffle-all
+class DatasetHARUML20:
+    def __init__(self, mode):
+        self.mode = mode
+        self.signals = har_dimensions
+        self.activities = har_activities
+        self.activities_map = har_activities_map
+        self.users = har_ind_IDS
+        self.intensity_map = activity_intensity_map
+        
+        self.currFold = -1
+        self.N_TESTS = 1
+        
+    
+    def loadData(self):
+        if self.mode == 'leave-one-subject':
+            self.currFold = self.currFold + 1
+            if self.currFold == len(self.users):
+                return False
+            self.test_users = self.users[self.currFold: self.currFold + self.N_TESTS]
+            self.train_users = self.users[:self.currFold] + self.users[self.currFold + self.N_TESTS:]
+        else:
+            self.train_users = self.users
+            self.test_users = []
+            
+        data = read_har_dataset(
+            './datasets/HAR-UML20/', 
+            train_ids=self.train_users, 
+            test_ids=self.test_users, 
+            val_ids=[], 
+            cache=True
+        )
+        
+        if self.mode == 'leave-one-subject':
+            _, self.X_train, self.y_train, self.I_train, train_kcal_MET = data['train']
+            self.MET_train = train_kcal_MET[:,1]
+            self.Int_train = np.zeros(self.X_train.shape[0])
+            self.Int_train[self.MET_train > 6.0] = 3
+            self.Int_train[self.MET_train <= 6.0] = 2
+            self.Int_train[self.MET_train <= 3.0] = 1
+            self.Int_train[self.MET_train <= 1.5] = 0
+            
+            _, self.X_test, self.y_test, self.I_test, test_kcal_MET = data['test']
+            self.MET_test = test_kcal_MET[:,1]
+            self.Int_test = np.zeros(self.X_test.shape[0])
+            self.Int_test[self.MET_test > 6.0] = 3
+            self.Int_test[self.MET_test <= 6.0] = 2
+            self.Int_test[self.MET_test <= 3.0] = 1
+            self.Int_test[self.MET_test <= 1.5] = 0
+        return True

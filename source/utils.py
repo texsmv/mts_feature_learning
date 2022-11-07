@@ -10,9 +10,13 @@ from sklearn.ensemble import AdaBoostClassifier
 from xgboost import XGBClassifier
 import matplotlib.pyplot as plt
 from sklearn import metrics
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+import matplotlib.pyplot as plt
 
 import numpy as np
 np.set_printoptions(precision=3)
+
+RESULTS_PATH = 'results'
 
 class ValueLogger(object):
     """Computes and stores the average and current value"""
@@ -51,9 +55,68 @@ class ValueLogger(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+        
+    
 
 
+class MetricsSaver:
+    def __init__(self, name: str, rows: list, cols: list):
+        self.name = name
+        self.logs = { row: { col:[] for col in cols} for row in rows}
+        self.rows = rows
+        self.cols = cols
+    
+    def addLog(self, row, col, val):
+        self.logs[row][col].append(val)
+        
+    def toImage(self):
+        create_dir(RESULTS_PATH)
+        path = os.path.join(RESULTS_PATH, 'metrics')
+        create_dir(path)
+        
+        mat_data = []
+        
+        for row in self.rows:
+            vals = list(self.logs[row].values())
+            mat_data.append(vals)
+        
+        for i in range(len(self.rows)):
+            for j in range(len(self.cols)):
+                vals = np.array(mat_data[i][j])
+                vmean = vals.mean()
+                vstd = vals.std()
+                mat_data[i][j] = '{:.2f} ({:.2f})'.format(vmean, vstd)
+                # vmean = vals.mean()
+            # vstd = vals.std()
+        
+        path = os.path.join(path, '{}.png'.format(self.name))
+        
+        
+        plotMatResult(
+            self.name, 
+            '', 
+            self.rows, 
+            self.cols, 
+            mat_data, 
+            plot_fig=True, 
+            save_fig=True, 
+            file_name=path,
+        )
+    
 
+def saveConfusionMatrix(real_classes, predicted_classes, name, labels = None, xrotation = 45):
+    # cm = confusion_matrix(real_classes, predicted_classes)
+    # disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels= CLASS_LABELS)
+    # disp.plot()
+    
+    create_dir(RESULTS_PATH)
+    path = os.path.join(RESULTS_PATH, 'confusion_matrix')
+    create_dir(path)
+    path = os.path.join(path,  'confusion_matrix_{}.png'.format(name))
+    
+    ConfusionMatrixDisplay.from_predictions (real_classes, predicted_classes, display_labels= labels, xticks_rotation=xrotation)
+    
+    plt.savefig(path, bbox_inches="tight", dpi=1200)
 
 def regression_results(y_true, y_pred):
     

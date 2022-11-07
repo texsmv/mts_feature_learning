@@ -41,6 +41,16 @@ class TSerie:
                     self.features[n, D * t + d] = self.X[n, t, d]
         if DEBUG:
             print('Features shape: {}'.format(self.features.shape))
+            
+    # def fft_features(self):
+    #     N, T, D = self.X.shape
+    #     self.features = np.zeros((N, D * T))
+    #     for n in range(N):
+    #         for t in range(T):
+    #             for d in range(D):
+    #                 self.features[n, D * t + d] = self.X[n, t, d]
+    #     if DEBUG:
+    #         print('Features shape: {}'.format(self.features.shape))
     
     def znorm(self, dimensions=[]):
         if len(dimensions) == 0:
