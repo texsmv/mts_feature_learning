@@ -11,6 +11,7 @@ from xgboost import XGBClassifier
 import matplotlib.pyplot as plt
 from sklearn import metrics
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from imblearn.under_sampling import RandomUnderSampler
 import matplotlib.pyplot as plt
 
 import numpy as np
@@ -459,7 +460,7 @@ def mts_norm(X, minl = [], maxl= []):
     return norm_X.transpose([0, 2, 1]), min_l, max_l
 
 
-def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_name = 'temp.png', save_fig = False, plot_fig=True):
+def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_name = 'temp.png', save_fig = False, plot_fig=True, figsize= (5,2)):
     fig_background_color = 'white'
     fig_border = 'steelblue'
     
@@ -484,7 +485,7 @@ def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_
             edgecolor=fig_border,
             facecolor=fig_background_color,
             tight_layout={'pad':1},
-            #figsize=(5,3)
+            figsize=figsize
             )# Add a table at the bottom of the axes
     the_table = plt.table(cellText=cell_text,
                         rowLabels=row_headers,
@@ -515,3 +516,10 @@ def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_
     if plot_fig:
         plt.show()
     
+def minoritySampling(X, y):
+    rus = RandomUnderSampler(sampling_strategy='not minority', random_state=1)
+    N, T, D = X.shape
+    X_temp = X.reshape([N, T * D])
+    X_temp, y = rus.fit_resample(X_temp, y)
+    X = X_temp.reshape([X_temp.shape[0], T, D])
+    return X, y

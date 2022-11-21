@@ -367,16 +367,26 @@ def read_har_dataset(path_to_dir, train_ids = None, test_ids = None, val_ids = N
 class DatasetHARUML20:
     def __init__(self, mode):
         self.mode = mode
-        self.signals = har_dimensions
+        self.signals = np.array(har_dimensions)
         self.activities = har_activities
         self.activities_map = har_activities_map
         self.users = har_ind_IDS
         self.intensity_map = activity_intensity_map
-        
+        self.intensities = [
+            "Sedentary",
+            "Light",
+            "Moderate",
+            "Vigorous"
+        ]        
         self.currFold = -1
         self.N_TESTS = 1
         
-    
+    def filterSignals(self, signals):
+        signals = np.array(signals)
+        idx = [np.where(self.signals == dim)[0][0] for dim in signals]
+        self.X_train = self.X_train[:, :, idx]
+        self.X_test = self.X_test[:, :, idx]
+
     def loadData(self):
         if self.mode == 'leave-one-subject':
             self.currFold = self.currFold + 1

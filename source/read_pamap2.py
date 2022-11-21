@@ -66,7 +66,7 @@ activityIDdict = {0: 'transient',
               20: 'playing_soccer',
               24: 'rope_jumping' }
 
-colNames = ["timestamp", "activityID","heartrate"]
+colNames = ["timestamp", "activityID", "heartrate"]
 
 IMUhand = ['handTemperature', 
            'handAcc16_1', 'handAcc16_2', 'handAcc16_3', 
@@ -102,10 +102,10 @@ def dataCleaning(dataCollection):
 
     return dataCollection
 
-PAMAP2_SIGNALS = ['handAcc16_1', 'handAcc16_2', 'handAcc16_3', 'handAcc6_1', 'handAcc6_2', 'handAcc6_3', 'handGyro1', 'handGyro2', 'handGyro3', 'handMagne1', 'handMagne2', 'handMagne3',]
+PAMAP2_SIGNALS = ['handAcc16_1', 'handAcc16_2', 'handAcc16_3', 'handAcc6_1', 'handAcc6_2', 'handAcc6_3', 'handGyro1', 'handGyro2', 'handGyro3', 'handMagne1', 'handMagne2', 'handMagne3', 'heartrate']
 
 # Data was taken with 100 Hz sampling rate
-def read_pamap2(seconds = 4, overlap=0.75, scolumns = ['handAcc16_1', 'handAcc16_2', 'handAcc16_3', 'handAcc6_1', 'handAcc6_2', 'handAcc6_3', 'handGyro1', 'handGyro2', 'handGyro3', 'handMagne1', 'handMagne2', 'handMagne3',], train_ids = None, test_ids = None, cache=True):
+def read_pamap2(seconds = 4, overlap=0.75, scolumns = PAMAP2_SIGNALS, train_ids = None, test_ids = None, cache=True):
     wsize = seconds * 100
     if train_ids is None:
         ids = subjectID
@@ -217,18 +217,33 @@ def read_pamap2(seconds = 4, overlap=0.75, scolumns = ['handAcc16_1', 'handAcc16
 
 # Modes: leave-one-subject, shuffle-all
 class DatasetPAMAP2:
-    def __init__(self, mode, signals = PAMAP2_SIGNALS, seconds = 4, overlap = 0.5):
+    def __init__(self, mode, seconds = 4, overlap = 0.5):
         self.mode = mode
-        self.signals = signals
         self.activities = list(activityIDdict.values())
         self.activities_map = activityIDdict
         self.users = subjectID
         self.intensity_map = activity_intensity_map
-        
+        self.signals = np.array(PAMAP2_SIGNALS)
         self.currFold = -1
         self.N_TESTS = 1
         self.seconds = seconds
         self.overlap = overlap 
+        self.intensities = [
+            "Sedentary",
+            "Light",
+            "Moderate",
+            "Vigorous"
+        ]
+
+    def filterSignals(self, signals):
+        signals = np.array(signals)
+        
+        print(signals)
+        print(self.signals)
+        idx = [np.where(self.signals == dim)[0][0] for dim in signals]
+        self.X_train = self.X_train[:, :, idx]
+        self.X_test = self.X_test[:, :, idx]
+        
 
     def loadData(self):
         if self.mode == 'leave-one-subject':
@@ -245,7 +260,6 @@ class DatasetPAMAP2:
             train_ids=self.train_users, 
             test_ids=self.test_users, 
             cache=True,
-            scolumns=self.signals,
             overlap=self.overlap,
             seconds=self.seconds,
         )
@@ -267,3 +281,5 @@ class DatasetPAMAP2:
             self.Int_test[self.MET_test <= 3.0] = 1
             self.Int_test[self.MET_test <= 1.5] = 0
         return True
+
+

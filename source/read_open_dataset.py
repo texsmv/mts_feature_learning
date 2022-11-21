@@ -88,7 +88,7 @@ columns = [
     'rr_interval',
     'light',
     'barometer',
-    'altimeter'
+    'altimeter',
 ]
 individuals = [e for e in range(100, 130)]
 individuals.remove(114)
@@ -243,16 +243,25 @@ def read_open_dataset(seconds = 4, train_ids = None, test_ids = None, cache=True
 class DatasetOpenDataset:
     def __init__(self, mode, seconds = 4, folds = []):
         self.mode = mode
-        self.signals = columns
+        self.signals = np.array(columns)
         self.activities = activities
         self.activities_map = activities_map
         self.users = individuals.tolist()
         self.intensity_map = activities_met_map
-        
+        self.intensities = [
+            "Sedentary",
+            "Light"
+        ]        
         self.currFold = -1
         self.N_TESTS = 1
         self.seconds = seconds
         self.folds = folds # List of test ids lists 
+    
+    def filterSignals(self, signals):
+        signals = np.array(signals)
+        idx = [np.where(self.signals == dim)[0][0] for dim in signals]
+        self.X_train = self.X_train[:, :, idx]
+        self.X_test = self.X_test[:, :, idx]
     
     def loadData(self, activities = None):
         if self.mode == 'leave-one-subject':
