@@ -460,7 +460,7 @@ def mts_norm(X, minl = [], maxl= []):
     return norm_X.transpose([0, 2, 1]), min_l, max_l
 
 
-def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_name = 'temp.png', save_fig = False, plot_fig=True, figsize= (5,2)):
+def plotMatResult(title_text, footer_text, row_names, col_names, mat_data, file_name = 'temp.png', save_fig = False, plot_fig=True, figsize= (7,2)):
     fig_background_color = 'white'
     fig_border = 'steelblue'
     

@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch_snippets import *
 from ..models.contrastive.losses import SupConLoss
 from ..utils import ValueLogger
-from torchsummary import summary
+# from torchsummary import summary
 
 from ..models.contrastive.models import SiameseNetwork
 

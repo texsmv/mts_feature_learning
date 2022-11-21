@@ -238,8 +238,6 @@ class DatasetPAMAP2:
     def filterSignals(self, signals):
         signals = np.array(signals)
         
-        print(signals)
-        print(self.signals)
         idx = [np.where(self.signals == dim)[0][0] for dim in signals]
         self.X_train = self.X_train[:, :, idx]
         self.X_test = self.X_test[:, :, idx]
