@@ -3,6 +3,7 @@ import random
 import os
 import csv
 import numpy as np
+import pandas as pd
 from math import *
 import source.augmentation as aug
 from sklearn import svm
@@ -13,6 +14,7 @@ from sklearn import metrics
 from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 from imblearn.under_sampling import RandomUnderSampler
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 import numpy as np
 np.set_printoptions(precision=3)
@@ -115,7 +117,16 @@ def saveConfusionMatrix(real_classes, predicted_classes, name, labels = None, xr
     create_dir(path)
     path = os.path.join(path,  'confusion_matrix_{}.png'.format(name))
     
-    ConfusionMatrixDisplay.from_predictions (real_classes, predicted_classes, display_labels= labels, xticks_rotation=xrotation)
+    cm = confusion_matrix(real_classes, predicted_classes)
+    
+    cmn = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+    fig, ax = plt.subplots(figsize=(10,10))
+    sns.heatmap(cmn, annot=True, fmt='.2f', xticklabels=labels, yticklabels=labels)
+    plt.ylabel('Actual')
+    plt.xlabel('Predicted')
+    # plt.show(block=False)
+    
+    # ConfusionMatrixDisplay.from_predictions (real_classes, predicted_classes, display_labels= labels, xticks_rotation=xrotation)
     
     plt.savefig(path, bbox_inches="tight", dpi=1200)
 
@@ -527,7 +538,7 @@ def minoritySampling(X, y):
 
 
 
-def accuracy_per_class(clf, train_y, test_y, train_feat, test_feat, train_2c, test_2c, class_map2):
+def accuracy_per_class(clf, train_y, test_y, train_feat, test_feat, train_2c, test_2c, class_map2, is_binary=True):
     # Train classifier
     clf.fit(train_feat, train_y)
     
@@ -536,6 +547,12 @@ def accuracy_per_class(clf, train_y, test_y, train_feat, test_feat, train_2c, te
     
     classes = np.unique(train_2c)
     
+    
+    class_precision = []
+    class_recall = []
+    class_bacc = []
+    class_acc = []
+    class_f1 = []
     for c in classes:
         # Second class index
         train_idx = train_2c == c
@@ -545,32 +562,75 @@ def accuracy_per_class(clf, train_y, test_y, train_feat, test_feat, train_2c, te
         train_s_y = train_y[train_idx]
         test_s_y = test_y[test_idx]
         
+        if len(test_s_y) == 0 or len(train_s_y) == 0:
+            continue
         # Predict of second class' class
         train_pr = clf.predict(train_feat[train_idx])
         test_pr = clf.predict(test_feat[test_idx])
 
         # Save metrics
-        train_f1 = metrics.f1_score(train_s_y, train_pr, average='weighted')
-        test_f1 = metrics.f1_score(test_s_y, test_pr, average='weighted')
+        # print(np.unique(train_s_y))
+        # print(np.unique(test_s_y))
+        # print(np.unique(train_pr))
+        # print(np.unique(test_pr))
+        # print(train_s_y.shape)
+        # print(test_s_y.shape)
+        # print(class_map2[c])
+        if is_binary:
+            train_f1 = metrics.f1_score(train_s_y, train_pr)
+            test_f1 = metrics.f1_score(test_s_y, test_pr)
+        else:
+            train_f1 = metrics.f1_score(train_s_y, train_pr, average='weighted')
+            test_f1 = metrics.f1_score(test_s_y, test_pr, average='weighted')
+        
         train_bacc = metrics.balanced_accuracy_score(train_s_y, train_pr)
         test_bacc = metrics.balanced_accuracy_score(test_s_y, test_pr)
         train_acc = metrics.accuracy_score(train_s_y, train_pr)
         test_acc = metrics.accuracy_score(test_s_y, test_pr)
         
         test_rec = metrics.recall_score(test_s_y, test_pr)
+        train_rec = metrics.recall_score(train_s_y, train_pr)
         test_prec = metrics.precision_score(test_s_y, test_pr)
+        train_prec = metrics.precision_score(train_s_y, train_pr)
 
-        print(np.unique(test_s_y, return_counts=True))
-        print(np.unique(test_pr, return_counts=True))
+        # print(np.unique(test_s_y, return_counts=True))
+        # print(np.unique(test_pr, return_counts=True))
     
         
-        print('Class : {}'.format(class_map2[c]))
-        print('Test f1_score: {}'.format(test_f1))
-        print('Test acc: {}'.format(test_acc))
-        print('Test bacc: {}'.format(test_bacc))
-        print('Test recall: {}'.format(test_rec))
-        print('Test precision: {}'.format(test_prec))
-        print('')
+        # print('Class : {}'.format(class_map2[c]))
+        # print('Test f1_score: {}'.format(test_f1))
+        # print('Test acc: {}'.format(test_acc))
+        # print('Test bacc: {}'.format(test_bacc))
+        # print('Test recall: {}'.format(test_rec))
+        # print('Test precision: {}'.format(test_prec))
+        # print('')
+        
+        class_precision.append(test_prec)
+        class_recall.append(test_rec)
+        class_bacc.append(test_bacc)
+        class_acc.append(test_acc)
+        class_f1.append(test_f1)
+        
+        # class_precision.append(train_prec)
+        # class_recall.append(train_rec)
+        # class_bacc.append(train_bacc)
+        # class_acc.append(train_acc)
+        # class_f1.append(train_f1)
+    
+    
+    res_df = pd.DataFrame({
+        'classes': [class_map2[c] for c in classes], 
+        'precision': class_precision,
+        'recall': class_recall,
+        'f1_score': class_f1,
+        'accuracy': class_acc,
+        'bal_accuracy': class_bacc,
+    })
+    return res_df
+            
+        
+        
+        
     
     
     
