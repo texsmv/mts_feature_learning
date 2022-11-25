@@ -523,3 +523,54 @@ def minoritySampling(X, y):
     X_temp, y = rus.fit_resample(X_temp, y)
     X = X_temp.reshape([X_temp.shape[0], T, D])
     return X, y
+
+
+
+
+def accuracy_per_class(clf, train_y, test_y, train_feat, test_feat, train_2c, test_2c, class_map2):
+    # Train classifier
+    clf.fit(train_feat, train_y)
+    
+    train_pr = clf.predict(train_feat)
+    test_pr = clf.predict(test_feat)
+    
+    classes = np.unique(train_2c)
+    
+    for c in classes:
+        # Second class index
+        train_idx = train_2c == c
+        test_idx = test_2c == c
+        
+        # Class of the second class
+        train_s_y = train_y[train_idx]
+        test_s_y = test_y[test_idx]
+        
+        # Predict of second class' class
+        train_pr = clf.predict(train_feat[train_idx])
+        test_pr = clf.predict(test_feat[test_idx])
+
+        # Save metrics
+        train_f1 = metrics.f1_score(train_s_y, train_pr, average='weighted')
+        test_f1 = metrics.f1_score(test_s_y, test_pr, average='weighted')
+        train_bacc = metrics.balanced_accuracy_score(train_s_y, train_pr)
+        test_bacc = metrics.balanced_accuracy_score(test_s_y, test_pr)
+        train_acc = metrics.accuracy_score(train_s_y, train_pr)
+        test_acc = metrics.accuracy_score(test_s_y, test_pr)
+        
+        test_rec = metrics.recall_score(test_s_y, test_pr)
+        test_prec = metrics.precision_score(test_s_y, test_pr)
+
+        print(np.unique(test_s_y, return_counts=True))
+        print(np.unique(test_pr, return_counts=True))
+    
+        
+        print('Class : {}'.format(class_map2[c]))
+        print('Test f1_score: {}'.format(test_f1))
+        print('Test acc: {}'.format(test_acc))
+        print('Test bacc: {}'.format(test_bacc))
+        print('Test recall: {}'.format(test_rec))
+        print('Test precision: {}'.format(test_prec))
+        print('')
+    
+    
+    

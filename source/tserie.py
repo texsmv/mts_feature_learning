@@ -85,11 +85,11 @@ class TSerie:
         
         for i in range(self.N):
             for k in range(self.D):
-                if k in dimensions:
-                    mag = np.mean(self.X[i, :, k], axis = 0)
-                    X_norm[i, :, k] = (self.X[i, :, k] - mag) 
-                else:
-                    X_norm[i, :, k] = self.X[i, :, k]
+                # if k in dimensions:
+                mag = np.mean(self.X[i, :, k], axis = 0)
+                X_norm[i, :, k] = (self.X[i, :, k] - mag) 
+                # else:
+                #     X_norm[i, :, k] = self.X[i, :, k]
         self.X = X_norm
     # def center():
         

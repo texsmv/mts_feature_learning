@@ -21,29 +21,35 @@ list_of_files = ['PAMAP2_Dataset/Protocol/subject101.dat',
                  'PAMAP2_Dataset/Protocol/subject108.dat',
                  'PAMAP2_Dataset/Protocol/subject109.dat' ]
 
+optional_files= ['PAMAP2_Dataset/Optional/subject101.dat',
+                 'PAMAP2_Dataset/Optional/subject105.dat',
+                 'PAMAP2_Dataset/Optional/subject106.dat',
+                 'PAMAP2_Dataset/Optional/subject108.dat',
+                 'PAMAP2_Dataset/Optional/subject109.dat' ]
+
 
 subjectID = [1,2,3,4,5,6,7,8,9]
 # Activities compemdium
 # https://cdn-links.lww.com/permalink/mss/a/mss_43_8_2011_06_13_ainsworth_202093_sdc1.pdf
 activities_met_map = {
-    1: 1.0, # Lying quietly 1.0 or 1.3,
-    2: 1.0, # Sitting quietly 1.0 or 1.3,
-    3: 1.5, # Standing 1.5
+    1: 1.0, # Lying quietly
+    2: 1.5, # Sitting writting, desk work, tipping
+    3: 1.5, # Standing talkingor talking on the phone
     4: 3.5, # Walking moderate speed
-    5: 7, # Running
-    6: 6.8, # Slow
-    7: 4.8, # Nordic walking
+    5: 7.5, # Running
+    6: 4.0, # Cycling
+    7: 5.5, # Nordic walking
     9: 1.3, # Watching TV
     10: 1.5, # Computer work
     11: 2, # Car driving
-    12: 5.0, # Ascending stairs
+    12: 8.0, # Ascending stairs
     13: 3.5, # Descending stairs
-    16: 2.3, # vacuuming general
+    16: 3.5, # vacuuming general
     17: 1.8, # ironing
     18: 2.0, # folding laundry
     19: 3.3, # house cleaning 2.3 - 3.3
-    20: 3.3, # house cleaning
-    24: 11.8, # rope jumping (moderate speed)
+    20: 4.0, # playing soccer
+    24: 9.0, # rope jumping (moderate speed)
 }
 
 activityIDdict = {0: 'transient',
