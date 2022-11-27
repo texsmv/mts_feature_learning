@@ -19,16 +19,20 @@ list_of_files = ['PAMAP2_Dataset/Protocol/subject101.dat',
                  'PAMAP2_Dataset/Protocol/subject106.dat',
                  'PAMAP2_Dataset/Protocol/subject107.dat',
                  'PAMAP2_Dataset/Protocol/subject108.dat',
-                 'PAMAP2_Dataset/Protocol/subject109.dat' ]
+                #  'PAMAP2_Dataset/Protocol/subject109.dat' 
+                 ]
 
 optional_files= ['PAMAP2_Dataset/Optional/subject101.dat',
                  'PAMAP2_Dataset/Optional/subject105.dat',
                  'PAMAP2_Dataset/Optional/subject106.dat',
                  'PAMAP2_Dataset/Optional/subject108.dat',
-                 'PAMAP2_Dataset/Optional/subject109.dat' ]
+                #  'PAMAP2_Dataset/Optional/subject109.dat' 
+                 ]
 
 
-subjectID = [1,2,3,4,5,6,7,8,9]
+# subjectID = [1,2,3,4,5,6,7,8,9]
+subjectID = [1,2,3,4,5,6,7,8]
+
 # Activities compemdium
 # https://cdn-links.lww.com/permalink/mss/a/mss_43_8_2011_06_13_ainsworth_202093_sdc1.pdf
 activities_met_map = {
@@ -96,6 +100,7 @@ IMUankle = ['ankleTemperature',
            'ankleOrientation1', 'ankleOrientation2', 'ankleOrientation3', 'ankleOrientation4']
 
 columns = colNames + IMUhand + IMUchest + IMUankle 
+
 
 def dataCleaning(dataCollection):
     dataCollection = dataCollection.drop(['handOrientation1', 'handOrientation2', 'handOrientation3', 'handOrientation4',
@@ -240,6 +245,18 @@ class DatasetPAMAP2:
             "Moderate",
             "Vigorous"
         ]
+        self.hr_limits = {
+            1: (75, 193),
+            2: (74, 195),
+            3: (68, 189),
+            4: (68, 189),
+            5: (70, 184),
+            6: (60, 194),
+            7: (60, 197),
+            8: (66, 188),
+            7: (54, 189),
+        }
+
 
     def filterSignals(self, signals):
         signals = np.array(signals)
@@ -249,7 +266,7 @@ class DatasetPAMAP2:
         self.X_test = self.X_test[:, :, idx]
         
 
-    def loadData(self):
+    def loadData(self, cache=True):
         if self.mode == 'leave-one-subject':
             self.currFold = self.currFold + 1
             if self.currFold == len(self.users):
@@ -263,7 +280,7 @@ class DatasetPAMAP2:
         data = read_pamap2(
             train_ids=self.train_users, 
             test_ids=self.test_users, 
-            cache=True,
+            cache=cache,
             overlap=self.overlap,
             seconds=self.seconds,
         )
