@@ -11,6 +11,8 @@ activity_intensity_map = {
     3: "Vigorous"
 }
 
+DATASET_PATH = 'datasets/PAMAP2_Dataset/'
+
 list_of_files = ['PAMAP2_Dataset/Protocol/subject101.dat',
                  'PAMAP2_Dataset/Protocol/subject102.dat',
                  'PAMAP2_Dataset/Protocol/subject103.dat',
@@ -256,6 +258,11 @@ class DatasetPAMAP2:
             8: (66, 188),
             7: (54, 189),
         }
+    
+    def participants_info(self):
+        df = pd.read_csv(os.path.join(DATASET_PATH, 'subject_information.csv'))
+        df['Subject ID'] = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        return df
 
 
     def filterSignals(self, signals):

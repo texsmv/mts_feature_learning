@@ -92,6 +92,8 @@ columns = [
 ]
 individuals = [e for e in range(100, 130)]
 individuals.remove(114)
+individuals.remove(115)
+# individuals.remove(116)
 individuals = np.array(individuals)
 
 # Gets the indivuals data as well as the labels per activity from an individual
@@ -328,6 +330,6 @@ class DatasetOpenDataset:
 def openDatasetParticipants():
     df = pd.read_csv(os.path.join(DATASET_PATH, 'participants_details.csv'))
     # Removing conflicting participant
-    df = df[df.Id != 115]
+    df = df[df.Id != 114]
     return df
 
